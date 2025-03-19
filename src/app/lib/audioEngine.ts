@@ -8,6 +8,8 @@ interface IAudioEngine {
   stopNote(note: string): void;
   stopAll(): void;
   playMIDISequence(notes: Array<{ note: string; startTime: number; duration: number; velocity: number }>): void;
+  setPlaybackSpeed(speed: number): void;
+  getPlaybackSpeed(): number;
   onSongEnd?: () => void;
 }
 
@@ -18,6 +20,7 @@ export class AudioEngine implements IAudioEngine {
   private activeNotes: Set<string> = new Set();
   onSongEnd?: () => void;
   private activeTimeouts: NodeJS.Timeout[] = [];
+  private playbackRate: number = 1.0;
 
   constructor() {
     // AudioContext will be initialized when needed
@@ -43,7 +46,9 @@ export class AudioEngine implements IAudioEngine {
     try {
       console.log(`Loading instrument: ${instrumentName}`);
       const soundfont = Soundfont(ctx);
-      this.currentInstrument = await soundfont.instrument(instrumentName);
+      this.currentInstrument = await soundfont.instrument(instrumentName, {
+        gain: 2.0 // Increase gain to match melody volume
+      });
       this.currentInstrumentName = instrumentName;
       console.log(`Successfully loaded instrument: ${instrumentName}`);
     } catch (error) {
@@ -150,6 +155,17 @@ export class AudioEngine implements IAudioEngine {
     }
   }
 
+  setPlaybackSpeed(speed: number) {
+    if (speed < 0.25 || speed > 2) {
+      throw new Error('Playback speed must be between 0.25 and 2');
+    }
+    this.playbackRate = speed;
+  }
+
+  getPlaybackSpeed(): number {
+    return this.playbackRate;
+  }
+
   playMIDISequence(notes: Array<{ note: string; startTime: number; duration: number; velocity: number }>): void {
     if (!this.currentInstrument || !this.ctx) return;
 
@@ -164,27 +180,31 @@ export class AudioEngine implements IAudioEngine {
       // Convert note to scientific notation if needed
       const scientificNote = /^[A-G][#b]?\d$/.test(note) ? note : this.midiNoteToScientific(note);
       
-      console.log(`Scheduling note ${scientificNote} at ${startTime}ms`);
+      // Adjust timing based on playback speed
+      const adjustedStartTime = startTime / this.playbackRate;
+      const adjustedDuration = duration / this.playbackRate;
+      
+      console.log(`Scheduling note ${scientificNote} at ${adjustedStartTime}ms (speed: ${this.playbackRate}x)`);
 
       const timeout = setTimeout(() => {
         console.log(`Playing note ${scientificNote}`);
         if (this.currentInstrument) {
           Promise.resolve()
-            .then(() => this.currentInstrument?.play(scientificNote))
+            .then(() => this.currentInstrument?.play(scientificNote, adjustedDuration / 1000))
             .catch(error => {
               if (!error.toString().includes('midiToFreq')) {
                 console.error(`Failed to play note ${scientificNote}:`, error);
               }
             });
         }
-      }, startTime);
+      }, adjustedStartTime);
 
       timeouts.push(timeout);
     });
 
     // Schedule the onSongEnd callback
     const lastNote = notes[notes.length - 1];
-    const sequenceEndTime = lastNote.startTime + lastNote.duration;
+    const sequenceEndTime = (lastNote.startTime + lastNote.duration) / this.playbackRate;
     
     if (this.onSongEnd) {
       const endTimeout = setTimeout(() => {

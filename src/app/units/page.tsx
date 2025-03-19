@@ -70,7 +70,7 @@ export default function UnitsPage() {
               onHoverStart={() => setHoveredUnit(unit.id)}
               onHoverEnd={() => setHoveredUnit(null)}
             >
-              <Link href={unit.isUnlocked ? `/units/${unit.id}` : '#'}>
+              <Link href={unit.isUnlocked ? `/ear-training?unit=${unit.id}` : '#'}>
                 <div 
                   className={`
                     relative overflow-hidden rounded-xl shadow-lg 

@@ -1,8 +1,16 @@
+export interface Note {
+  note: string;
+  duration: number;
+  startTime: number;
+  velocity: number;
+}
+
 export interface Melody {
   id: string;
   audioFile: string;
   difficulty: number;
   concepts?: string[];
+  notes?: Note[];  // The detected note sequence
 }
 
 export interface Unit {

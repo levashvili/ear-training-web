@@ -88,6 +88,8 @@ interface KeyboardProps {
   startingNote?: string;   // The first note of the melody
   showInstrumentSelect?: boolean;  // New prop
   disableAudio?: boolean;  // Whether to disable internal audio playback
+  baseOctave?: number; // New prop for base octave
+  onOctaveChange?: (octave: number) => void; // New prop for octave change handler
 }
 
 interface KeyDefinition {
@@ -102,7 +104,9 @@ const Keyboard: React.FC<KeyboardProps> = ({
   melodyNotes = [],
   startingNote,
   showInstrumentSelect = true,
-  disableAudio = false
+  disableAudio = false,
+  baseOctave = 4, // Default to octave 4
+  onOctaveChange
 }) => {
   // Memoize the audioEngine instance
   const audioEngine = useCallback(() => new AudioEngine(), []);
@@ -112,32 +116,32 @@ const Keyboard: React.FC<KeyboardProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Define the notes in order, with their positions (C4 to B5)
+  // Define the notes in order, with their positions (using baseOctave)
   const keys: KeyDefinition[] = [
-    { note: 'C4', isBlack: false },
-    { note: 'C#4', isBlack: true },
-    { note: 'D4', isBlack: false },
-    { note: 'D#4', isBlack: true },
-    { note: 'E4', isBlack: false },
-    { note: 'F4', isBlack: false },
-    { note: 'F#4', isBlack: true },
-    { note: 'G4', isBlack: false },
-    { note: 'G#4', isBlack: true },
-    { note: 'A4', isBlack: false },
-    { note: 'A#4', isBlack: true },
-    { note: 'B4', isBlack: false },
-    { note: 'C5', isBlack: false },
-    { note: 'C#5', isBlack: true },
-    { note: 'D5', isBlack: false },
-    { note: 'D#5', isBlack: true },
-    { note: 'E5', isBlack: false },
-    { note: 'F5', isBlack: false },
-    { note: 'F#5', isBlack: true },
-    { note: 'G5', isBlack: false },
-    { note: 'G#5', isBlack: true },
-    { note: 'A5', isBlack: false },
-    { note: 'A#5', isBlack: true },
-    { note: 'B5', isBlack: false }
+    { note: `C${baseOctave}`, isBlack: false },
+    { note: `C#${baseOctave}`, isBlack: true },
+    { note: `D${baseOctave}`, isBlack: false },
+    { note: `D#${baseOctave}`, isBlack: true },
+    { note: `E${baseOctave}`, isBlack: false },
+    { note: `F${baseOctave}`, isBlack: false },
+    { note: `F#${baseOctave}`, isBlack: true },
+    { note: `G${baseOctave}`, isBlack: false },
+    { note: `G#${baseOctave}`, isBlack: true },
+    { note: `A${baseOctave}`, isBlack: false },
+    { note: `A#${baseOctave}`, isBlack: true },
+    { note: `B${baseOctave}`, isBlack: false },
+    { note: `C${baseOctave + 1}`, isBlack: false },
+    { note: `C#${baseOctave + 1}`, isBlack: true },
+    { note: `D${baseOctave + 1}`, isBlack: false },
+    { note: `D#${baseOctave + 1}`, isBlack: true },
+    { note: `E${baseOctave + 1}`, isBlack: false },
+    { note: `F${baseOctave + 1}`, isBlack: false },
+    { note: `F#${baseOctave + 1}`, isBlack: true },
+    { note: `G${baseOctave + 1}`, isBlack: false },
+    { note: `G#${baseOctave + 1}`, isBlack: true },
+    { note: `A${baseOctave + 1}`, isBlack: false },
+    { note: `A#${baseOctave + 1}`, isBlack: true },
+    { note: `B${baseOctave + 1}`, isBlack: false }
   ];
 
   useEffect(() => {
@@ -182,23 +186,17 @@ const Keyboard: React.FC<KeyboardProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      {error && !disableAudio && (
-        <div className="w-full p-4 mb-4 text-red-700 bg-red-100 rounded-md">
-          {error}
-        </div>
-      )}
-      
-      {showInstrumentSelect && !disableAudio && (
-        <div className="mb-4">
+    <div className="flex flex-col items-start gap-4">
+      {/* Instrument and Octave Controls */}
+      <div className="flex items-center gap-4 w-full">
+        {showInstrumentSelect && (
           <select
-            className="px-3 py-2 border rounded-md"
             value={selectedInstrument.id}
             onChange={(e) => {
               const instrument = SAMPLE_INSTRUMENTS.find(i => i.id === e.target.value);
               if (instrument) setSelectedInstrument(instrument);
             }}
-            disabled={isLoading}
+            className="px-3 py-1 border rounded text-sm"
           >
             {SAMPLE_INSTRUMENTS.map(instrument => (
               <option key={instrument.id} value={instrument.id}>
@@ -206,29 +204,57 @@ const Keyboard: React.FC<KeyboardProps> = ({
               </option>
             ))}
           </select>
+        )}
+        
+        {/* Octave Controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onOctaveChange?.(baseOctave - 1)}
+            disabled={baseOctave <= 2} // Prevent going too low
+            className={`px-3 py-1 rounded text-sm ${
+              baseOctave <= 2
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-600 text-white hover:bg-gray-700'
+            }`}
+          >
+            -
+          </button>
+          <span className="text-sm font-semibold text-gray-800">
+            Octave {baseOctave}
+          </span>
+          <button
+            onClick={() => onOctaveChange?.(baseOctave + 1)}
+            disabled={baseOctave >= 6} // Prevent going too high
+            className={`px-3 py-1 rounded text-sm ${
+              baseOctave >= 6
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-600 text-white hover:bg-gray-700'
+            }`}
+          >
+            +
+          </button>
         </div>
-      )}
+      </div>
 
-      <div className="relative flex justify-center items-center p-4">
-        <div className="inline-flex relative">
-          {keys.map(({ note, isBlack }) => (
-            <Key
-              key={note}
-              note={note}
-              isBlack={isBlack}
-              onClick={() => handleKeyPress(note)}
-              status={keyStatuses[note] || 'none'}
-              label={keyLabels[note]}
-              labelStyle={
-                note === startingNote
-                  ? 'starting'
-                  : melodyNotes.includes(note)
-                    ? 'default'
-                    : 'none'
-              }
-            />
-          ))}
-        </div>
+      {/* Keyboard Layout */}
+      <div className="relative inline-flex">
+        {keys.map(({ note, isBlack }) => (
+          <Key
+            key={note}
+            note={note}
+            isBlack={isBlack}
+            onClick={() => handleKeyPress(note)}
+            status={keyStatuses[note] || 'none'}
+            label={keyLabels[note]}
+            labelStyle={
+              note === startingNote
+                ? 'starting'
+                : melodyNotes.includes(note)
+                  ? 'default'
+                  : 'none'
+            }
+          />
+        ))}
       </div>
     </div>
   );

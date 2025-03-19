@@ -1,0 +1,46 @@
+{
+  "notes": [
+    {
+      "note": "E4",
+      "duration": 1000,
+      "startTime": 0,
+      "velocity": 100
+    },
+    {
+      "note": "D4",
+      "duration": 1000,
+      "startTime": 0,
+      "velocity": 100
+    },
+    {
+      "note": "C4",
+      "duration": 1000,
+      "startTime": 0,
+      "velocity": 100
+    },
+    {
+      "note": "D4",
+      "duration": 1000,
+      "startTime": 0,
+      "velocity": 100
+    },
+    {
+      "note": "E4",
+      "duration": 1000,
+      "startTime": 0,
+      "velocity": 100
+    },
+    {
+      "note": "E4",
+      "startTime": 0,
+      "duration": 1000,
+      "velocity": 100
+    },
+    {
+      "note": "E4",
+      "startTime": 0,
+      "duration": 1000,
+      "velocity": 100
+    }
+  ]
+}
