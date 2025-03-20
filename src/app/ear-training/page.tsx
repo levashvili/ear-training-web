@@ -355,6 +355,21 @@ export default function EarTrainingPage() {
     }
   }, [isMelodyCorrect, isCorrectFirstTry, currentMelody, currentUnit, increaseScore]);
 
+  // Add this with other handler functions
+  const handleRepeat = useCallback(() => {
+    // Reset playedNotes and isCorrectFirstTry
+    setPlayedNotes([]);
+    setIsCorrectFirstTry(true);
+    
+    // Play the current melody
+    if (currentMelody) {
+      const audio = new Audio(currentMelody.audioFile);
+      audio.play().catch(error => {
+        console.error('Error playing audio:', error);
+      });
+    }
+  }, [currentMelody]);
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm">
@@ -626,7 +641,13 @@ export default function EarTrainingPage() {
             <div className="flex flex-col items-center gap-4">
               <div className="flex gap-2">
                 <button 
-                  className="px-4 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors"
+                  onClick={handleRepeat}
+                  disabled={!currentMelody || isLoading}
+                  className={`px-4 py-1 text-white text-sm rounded transition-colors ${
+                    !currentMelody || isLoading 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-gray-600 hover:bg-gray-700'
+                  }`}
                 >
                   Repeat
                 </button>
