@@ -149,18 +149,24 @@ export default function EarTrainingPage() {
 
   // Add effect to handle melody completion
   useEffect(() => {
-    if (isMelodyCorrect && !isCorrectFirstTry) {
+    if (isMelodyCorrect && !isCorrectFirstTry && currentMelody) {
       // If completed but not on first try, reset after delay
       const timer = setTimeout(() => {
         setPlayedNotes([]);
         setIsMelodyCorrect(false);
         setIsCorrectFirstTry(true);  // Reset for new attempt
         // Note: We don't reset increaseScore here - it stays false for all attempts
+        
+        // Play the melody again for the new attempt
+        const audio = new Audio(currentMelody.audioFile);
+        audio.play().catch(error => {
+          console.error('Error playing audio:', error);
+        });
       }, 1500);
       
       return () => clearTimeout(timer);
     }
-  }, [isMelodyCorrect, isCorrectFirstTry]);
+  }, [isMelodyCorrect, isCorrectFirstTry, currentMelody]);
 
   // Modified to update state instead of saving to file
   const handleSaveNotes = () => {
