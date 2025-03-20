@@ -51,10 +51,18 @@ const UnitCompletionModal = ({
           {[...Array(3)].map((_, i) => (
             <motion.div
               key={i}
-              className={`text-4xl ${i < stars ? 'text-yellow-400' : 'text-gray-300'}`}
+              className={`text-4xl transition-colors ${i < stars ? 'text-yellow-400' : 'text-gray-300'}`}
               initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ delay: 0.3 + i * 0.2, duration: 0.5, type: 'spring' }}
+              animate={{ 
+                scale: 1, 
+                rotate: 0,
+                opacity: i < stars ? 1 : 0.5 
+              }}
+              transition={{ 
+                delay: i < stars ? 0.3 + i * 0.2 : 0,  // Only delay animation for earned stars
+                duration: 0.5, 
+                type: 'spring' 
+              }}
             >
               ⭐
             </motion.div>
