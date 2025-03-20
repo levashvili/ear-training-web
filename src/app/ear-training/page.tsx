@@ -370,6 +370,36 @@ export default function EarTrainingPage() {
     }
   }, [currentMelody]);
 
+  // Add skip functionality
+  const handleSkip = useCallback(() => {
+    if (!currentMelody || !currentUnit) return;
+
+    // Extract current melody number and calculate next
+    const currentNumber = parseInt(currentMelody.id.split('melody')[1]);
+    const nextMelodyId = `unit1-melody${currentNumber + 1}`;
+    
+    // Find next melody in current unit
+    const nextMelody = currentUnit.melodies.find(m => m.id === nextMelodyId);
+    
+    if (nextMelody) {
+      // Reset game states
+      setPlayedNotes([]);
+      setComparisonResult('');
+      setIsMelodyCorrect(false);
+      setIsCorrectFirstTry(true);
+      setIncreaseScore(true);
+      
+      // Set new melody (this will trigger JSON loading effect)
+      setCurrentMelody(nextMelody);
+      
+      // Play the new melody automatically
+      const audio = new Audio(nextMelody.audioFile);
+      audio.play().catch(error => {
+        console.error('Error playing audio:', error);
+      });
+    }
+  }, [currentMelody, currentUnit]);
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm">
@@ -652,7 +682,13 @@ export default function EarTrainingPage() {
                   Repeat
                 </button>
                 <button 
-                  className="px-4 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors"
+                  onClick={handleSkip}
+                  disabled={!currentMelody || isLoading}
+                  className={`px-4 py-1 text-white text-sm rounded transition-colors ${
+                    !currentMelody || isLoading 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-gray-600 hover:bg-gray-700'
+                  }`}
                 >
                   Skip
                 </button>
