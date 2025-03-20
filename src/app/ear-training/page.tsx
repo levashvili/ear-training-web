@@ -22,6 +22,7 @@ export default function EarTrainingPage() {
   const [comparisonResult, setComparisonResult] = useState<string>('');
   const [isMelodyCorrect, setIsMelodyCorrect] = useState<boolean>(false);
   const [isCorrectFirstTry, setIsCorrectFirstTry] = useState<boolean>(true);
+  const [increaseScore, setIncreaseScore] = useState<boolean>(true);
 
   // Helper function to compare note arrays
   const compareNoteArrays = (played: Note[], manual: Note[], upToLength: number): boolean => {
@@ -60,6 +61,7 @@ export default function EarTrainingPage() {
         const newNoteIndex = newNotes.length - 1;
         if (newNoteIndex < manualNotes.length && newNote.note !== manualNotes[newNoteIndex].note) {
           setIsCorrectFirstTry(false);
+          setIncreaseScore(false); // Once set to false, stays false for this melody
         }
         
         // If melody is complete
@@ -73,6 +75,7 @@ export default function EarTrainingPage() {
         // If sequence is incorrect, mark as not complete and no longer correct on first try
         setIsMelodyCorrect(false);
         setIsCorrectFirstTry(false);
+        setIncreaseScore(false); // Once set to false, stays false for this melody
         const newNotes = prev.length > 0 ? 
           [...prev.slice(0, -1), newNote] : 
           [newNote];
@@ -94,6 +97,7 @@ export default function EarTrainingPage() {
         setPlayedNotes([]);
         setIsMelodyCorrect(false);
         setIsCorrectFirstTry(true);  // Reset for new attempt
+        // Note: We don't reset increaseScore here - it stays false for all attempts
       }, 1500);
       
       return () => clearTimeout(timer);
@@ -234,7 +238,7 @@ export default function EarTrainingPage() {
               <div className={`px-4 py-2 rounded-md ${
                 isMelodyCorrect 
                   ? isCorrectFirstTry
-                    ? 'bg-purple-100 text-purple-800' // Special color for perfect completion
+                    ? 'bg-purple-100 text-purple-800' 
                     : 'bg-green-100 text-green-800'
                   : 'bg-gray-100 text-gray-800'
               }`}>
@@ -250,6 +254,13 @@ export default function EarTrainingPage() {
                   : 'bg-gray-100 text-gray-800'
               }`}>
                 {isCorrectFirstTry ? 'Perfect First Try! 🌟' : 'Made Mistakes'}
+              </div>
+              <div className={`px-4 py-2 rounded-md ${
+                increaseScore
+                  ? 'bg-yellow-100 text-yellow-800'
+                  : 'bg-red-50 text-red-800'
+              }`}>
+                {increaseScore ? 'Score Will Increase! 🏆' : 'No Score Increase'}
               </div>
             </div>
           </div>
