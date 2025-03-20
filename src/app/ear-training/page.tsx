@@ -301,6 +301,41 @@ export default function EarTrainingPage() {
     }
   }, [currentMelody]);
 
+  // Handle automatic progression to next melody
+  useEffect(() => {
+    if (isMelodyCorrect && isCorrectFirstTry && currentMelody) {
+      // Extract current melody number and calculate next
+      const currentNumber = parseInt(currentMelody.id.split('melody')[1]);
+      const nextMelodyId = `unit1-melody${currentNumber + 1}`;
+      
+      // Find next melody in current unit
+      const nextMelody = currentUnit?.melodies.find(m => m.id === nextMelodyId);
+      
+      if (nextMelody) {
+        // Update score if no mistakes were made
+        if (increaseScore) {
+          setScore(prevScore => prevScore + 1);
+        }
+        
+        // Reset game states
+        setPlayedNotes([]);
+        setComparisonResult('');
+        setIsMelodyCorrect(false);
+        setIsCorrectFirstTry(true);
+        setIncreaseScore(true);
+        
+        // Set new melody (this will trigger JSON loading effect)
+        setCurrentMelody(nextMelody);
+        
+        // Play the new melody automatically
+        const audio = new Audio(nextMelody.audioFile);
+        audio.play().catch(error => {
+          console.error('Error playing audio:', error);
+        });
+      }
+    }
+  }, [isMelodyCorrect, isCorrectFirstTry, currentMelody, currentUnit, increaseScore]);
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm">
