@@ -6,23 +6,81 @@ import Keyboard from '../components/Keyboard';
 import { useState, useCallback, useEffect } from 'react';
 import { units } from '../data/units';
 import { Unit, Melody, Note } from '../types/units';
+import { useSearchParams } from 'next/navigation';
+import { AudioEngine } from '../lib/audioEngine';
+import { SAMPLE_INSTRUMENTS } from '../types/music';
 
 export default function EarTrainingPage() {
-  const [currentMelody, setCurrentMelody] = useState<Melody | null>(null);
+  // URL parameter handling
+  const searchParams = useSearchParams();
+  
+  // Game state
+  const [playedNotes, setPlayedNotes] = useState<Note[]>([]);
+  const [manualNotes, setManualNotes] = useState<Note[]>([]);
+  const [expectedNotes, setExpectedNotes] = useState<Note[]>([]);
+  const [comparisonResult, setComparisonResult] = useState<string>('');
+  const [isMelodyCorrect, setIsMelodyCorrect] = useState<boolean>(false);
+  const [isCorrectFirstTry, setIsCorrectFirstTry] = useState<boolean>(true);
+  const [increaseScore, setIncreaseScore] = useState<boolean>(true);
+  const [score, setScore] = useState<number>(0);
+  
+  // Unit state - kept separate from game logic
   const [currentUnit, setCurrentUnit] = useState<Unit | null>(null);
+  const [currentMelody, setCurrentMelody] = useState<Melody | null>(null);
+  
+  // Practice state
+  const [isPracticeStarted, setIsPracticeStarted] = useState(false);
+  const [audioEngine] = useState(() => new AudioEngine());
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Initialize audio engine
+  useEffect(() => {
+    const loadInstrument = async () => {
+      setIsLoading(true);
+      try {
+        await audioEngine.loadInstrument(SAMPLE_INSTRUMENTS[0].id);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error loading instrument:', err);
+        setIsLoading(false);
+      }
+    };
+
+    loadInstrument();
+  }, [audioEngine]);
+
+  // Initialize unit from URL parameter
+  useEffect(() => {
+    const unitId = searchParams.get('unit');
+    if (unitId) {
+      const unit = units.find(u => u.id === parseInt(unitId));
+      if (unit) {
+        setCurrentUnit(unit);
+        // For now, just load the first melody of the unit
+        if (unit.melodies.length > 0) {
+          setCurrentMelody(unit.melodies[0]);
+        }
+      }
+    }
+  }, [searchParams]);
+
+  // Handle begin practice
+  const handleBeginPractice = useCallback(() => {
+    if (!currentMelody || isLoading) return;
+    
+    setIsPracticeStarted(true);
+    const audio = new Audio(currentMelody.audioFile);
+    audio.play().catch(error => {
+      console.error('Error playing audio:', error);
+      setIsPracticeStarted(false);
+    });
+  }, [currentMelody, isLoading]);
+
   const [keyStatuses, setKeyStatuses] = useState<Record<string, 'correct' | 'incorrect' | 'none'>>({});
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [noteInput, setNoteInput] = useState('');
   const [baseOctave, setBaseOctave] = useState(4);
-
-  // Modified state for played notes sequence
-  const [playedNotes, setPlayedNotes] = useState<Note[]>([]);
-  const [manualNotes, setManualNotes] = useState<Note[]>([]);
-  const [comparisonResult, setComparisonResult] = useState<string>('');
-  const [isMelodyCorrect, setIsMelodyCorrect] = useState<boolean>(false);
-  const [isCorrectFirstTry, setIsCorrectFirstTry] = useState<boolean>(true);
-  const [increaseScore, setIncreaseScore] = useState<boolean>(true);
 
   // Helper function to compare note arrays
   const compareNoteArrays = (played: Note[], manual: Note[], upToLength: number): boolean => {
@@ -214,6 +272,35 @@ export default function EarTrainingPage() {
     notPlayed: 'bg-gray-100 text-gray-800'
   } as const;
 
+  useEffect(() => {
+    if (currentMelody?.audioFile) {
+      // Extract the path without the .mp3 extension and add _notes.json
+      const basePath = currentMelody.audioFile.replace('.mp3', '_notes.json');
+      
+      console.log('Attempting to load notes from:', basePath);
+      
+      fetch(basePath)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('Notes loaded:', data);
+          // Extract the notes array from the response
+          const notes = data.notes || [];
+          setExpectedNotes(notes);
+          setManualNotes(notes); // Copy the notes to manualNotes
+        })
+        .catch(error => {
+          console.error('Error loading notes:', error);
+          console.error('Failed path was:', basePath);
+          setExpectedNotes([]);
+        });
+    }
+  }, [currentMelody]);
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm">
@@ -222,19 +309,75 @@ export default function EarTrainingPage() {
             <Link href="/units" className="text-blue-500 hover:text-blue-700">
               ← Back to Units
             </Link>
-            <h1 className="text-lg font-semibold text-gray-900">
-              {currentUnit?.title} - Melody {currentMelody?.id.split('-')[1].replace('melody', '')}
-            </h1>
+            {currentUnit && (
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-semibold text-gray-900">
+                  {currentUnit.title}
+                </h1>
+                <span className="text-sm text-gray-500">
+                  {currentMelody ? `Melody ${currentMelody.id.split('-')[1].replace('melody', '')}` : ''}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
       <main className="flex-grow">
+        {/* Unit Info Section */}
+        {currentUnit && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">{currentUnit.title}</h2>
+                <p className="text-sm text-gray-600 mt-1">{currentUnit.description}</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Progress:</span>
+                  <div className="flex gap-1">
+                    {[...Array(3)].map((_, i) => (
+                      <svg
+                        key={i}
+                        className={`w-6 h-6 ${
+                          i < (currentUnit.stars || 0)
+                            ? 'text-yellow-400'
+                            : 'text-gray-300'
+                        }`}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={handleBeginPractice}
+                  disabled={isPracticeStarted || isLoading}
+                  className={`px-6 py-2 rounded-md text-white transition-colors ${
+                    isPracticeStarted
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : isLoading
+                      ? 'bg-gray-400 cursor-wait'
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
+                >
+                  {isLoading ? 'Loading...' : isPracticeStarted ? 'Practice Started' : 'Begin Practice'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Status Section */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Melody Status:</h2>
             <div className="flex gap-4">
+              <div className="px-4 py-2 rounded-md bg-purple-100 text-purple-800">
+                Score: {score}
+              </div>
               <div className={`px-4 py-2 rounded-md ${
                 isMelodyCorrect 
                   ? isCorrectFirstTry
@@ -377,6 +520,24 @@ export default function EarTrainingPage() {
                 </button>
               </div>
             ) : null}
+          </div>
+
+          {/* Add this section before or after your Manual Notes section */}
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-2">Expected Notes</h3>
+            <div className="bg-gray-100 p-4 rounded-lg">
+              {expectedNotes.length > 0 ? (
+                <div className="space-x-2">
+                  {expectedNotes.map((note, index) => (
+                    <span key={index} className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      {note.note}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">No expected notes loaded</p>
+              )}
+            </div>
           </div>
 
           {/* Played notes section - Moved closer to keyboard */}
