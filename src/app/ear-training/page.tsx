@@ -319,9 +319,10 @@ export default function EarTrainingPage() {
     if (isMelodyCorrect && isCorrectFirstTry && currentMelody) {
       // Add a 2-second delay before moving to next melody
       const timer = setTimeout(() => {
-        // Extract current melody number and calculate next
-        const currentNumber = parseInt(currentMelody.id.split('melody')[1]);
-        const nextMelodyId = `unit1-melody${currentNumber + 1}`;
+        // Extract current unit and melody numbers and calculate next
+        const [unitPart, melodyPart] = currentMelody.id.split('-');
+        const currentNumber = parseInt(melodyPart.replace('melody', ''));
+        const nextMelodyId = `${unitPart}-melody${currentNumber + 1}`;
         
         // Find next melody in current unit
         const nextMelody = currentUnit?.melodies.find(m => m.id === nextMelodyId);
@@ -374,9 +375,10 @@ export default function EarTrainingPage() {
   const handleSkip = useCallback(() => {
     if (!currentMelody || !currentUnit) return;
 
-    // Extract current melody number and calculate next
-    const currentNumber = parseInt(currentMelody.id.split('melody')[1]);
-    const nextMelodyId = `unit1-melody${currentNumber + 1}`;
+    // Extract current unit and melody numbers and calculate next
+    const [unitPart, melodyPart] = currentMelody.id.split('-');
+    const currentNumber = parseInt(melodyPart.replace('melody', ''));
+    const nextMelodyId = `${unitPart}-melody${currentNumber + 1}`;
     
     // Find next melody in current unit
     const nextMelody = currentUnit.melodies.find(m => m.id === nextMelodyId);
