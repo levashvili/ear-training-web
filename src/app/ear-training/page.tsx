@@ -9,6 +9,7 @@ import { Unit, Melody, Note } from '../types/units';
 import { useSearchParams } from 'next/navigation';
 import { AudioEngine } from '../lib/audioEngine';
 import { SAMPLE_INSTRUMENTS } from '../types/music';
+import UnitCompletionModal from '../components/UnitCompletionModal';
 
 export default function EarTrainingPage() {
   // URL parameter handling
@@ -32,6 +33,7 @@ export default function EarTrainingPage() {
   const [isPracticeStarted, setIsPracticeStarted] = useState(false);
   const [audioEngine] = useState(() => new AudioEngine());
   const [isLoading, setIsLoading] = useState(true);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
 
   // Initialize audio engine
   useEffect(() => {
@@ -314,9 +316,39 @@ export default function EarTrainingPage() {
     }
   }, [currentMelody]);
 
-  // Handle automatic progression to next melody
+  // Add calculateStars function
+  const calculateStars = (score: number) => {
+    if (score >= 6) return 3;
+    if (score >= 4) return 2;
+    if (score >= 2) return 1;
+    return 0;
+  };
+
+  // Add handleRetry function
+  const handleRetry = useCallback(() => {
+    // Reset all game states
+    setScore(0);
+    setPlayedNotes([]);
+    setComparisonResult('');
+    setIsMelodyCorrect(false);
+    setIsCorrectFirstTry(true);
+    setIncreaseScore(true);
+    setShowCompletionModal(false);
+    
+    // Set first melody of the unit
+    if (currentUnit && currentUnit.melodies.length > 0) {
+      setCurrentMelody(currentUnit.melodies[0]);
+      // Play the first melody
+      const audio = new Audio(currentUnit.melodies[0].audioFile);
+      audio.play().catch(error => {
+        console.error('Error playing audio:', error);
+      });
+    }
+  }, [currentUnit]);
+
+  // Modify the automatic progression effect to handle unit completion
   useEffect(() => {
-    if (isMelodyCorrect && isCorrectFirstTry && currentMelody) {
+    if (isMelodyCorrect && isCorrectFirstTry && currentMelody && currentUnit) {
       // Add a 2-second delay before moving to next melody
       const timer = setTimeout(() => {
         // Extract current unit and melody numbers and calculate next
@@ -325,14 +357,27 @@ export default function EarTrainingPage() {
         const nextMelodyId = `${unitPart}-melody${currentNumber + 1}`;
         
         // Find next melody in current unit
-        const nextMelody = currentUnit?.melodies.find(m => m.id === nextMelodyId);
+        const nextMelody = currentUnit.melodies.find(m => m.id === nextMelodyId);
+        
+        // Check if this was the last melody
+        const isLastMelody = !nextMelody;
+        
+        // Update score if no mistakes were made
+        if (increaseScore) {
+          setScore(prevScore => {
+            const newScore = prevScore + 1;
+            // If this was the last melody and we earned a point, show completion
+            if (isLastMelody) {
+              setShowCompletionModal(true);
+            }
+            return newScore;
+          });
+        } else if (isLastMelody) {
+          // If this was the last melody but we didn't earn a point, still show completion
+          setShowCompletionModal(true);
+        }
         
         if (nextMelody) {
-          // Update score if no mistakes were made
-          if (increaseScore) {
-            setScore(prevScore => prevScore + 1);
-          }
-          
           // Reset game states
           setPlayedNotes([]);
           setComparisonResult('');
@@ -356,7 +401,7 @@ export default function EarTrainingPage() {
     }
   }, [isMelodyCorrect, isCorrectFirstTry, currentMelody, currentUnit, increaseScore]);
 
-  // Add this with other handler functions
+  // Add handleRepeat function
   const handleRepeat = useCallback(() => {
     // Reset playedNotes and isCorrectFirstTry
     setPlayedNotes([]);
@@ -371,7 +416,7 @@ export default function EarTrainingPage() {
     }
   }, [currentMelody]);
 
-  // Add skip functionality
+  // Modify handleSkip to handle unit completion
   const handleSkip = useCallback(() => {
     if (!currentMelody || !currentUnit) return;
 
@@ -383,23 +428,27 @@ export default function EarTrainingPage() {
     // Find next melody in current unit
     const nextMelody = currentUnit.melodies.find(m => m.id === nextMelodyId);
     
-    if (nextMelody) {
-      // Reset game states
-      setPlayedNotes([]);
-      setComparisonResult('');
-      setIsMelodyCorrect(false);
-      setIsCorrectFirstTry(true);
-      setIncreaseScore(true);
-      
-      // Set new melody (this will trigger JSON loading effect)
-      setCurrentMelody(nextMelody);
-      
-      // Play the new melody automatically
-      const audio = new Audio(nextMelody.audioFile);
-      audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-      });
+    // Check if this was the last melody
+    if (!nextMelody) {
+      setShowCompletionModal(true);
+      return;
     }
+    
+    // Reset game states
+    setPlayedNotes([]);
+    setComparisonResult('');
+    setIsMelodyCorrect(false);
+    setIsCorrectFirstTry(true);
+    setIncreaseScore(true);
+    
+    // Set new melody (this will trigger JSON loading effect)
+    setCurrentMelody(nextMelody);
+    
+    // Play the new melody automatically
+    const audio = new Audio(nextMelody.audioFile);
+    audio.play().catch(error => {
+      console.error('Error playing audio:', error);
+    });
   }, [currentMelody, currentUnit]);
 
   return (
@@ -735,6 +784,13 @@ export default function EarTrainingPage() {
           </div>
         </div>
       </main>
+
+      <UnitCompletionModal
+        show={showCompletionModal}
+        score={score}
+        stars={calculateStars(score)}
+        onRetry={handleRetry}
+      />
     </div>
   );
 } 
