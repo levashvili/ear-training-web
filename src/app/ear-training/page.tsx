@@ -137,6 +137,13 @@ export default function EarTrainingPage() {
         const newNotes = prev.length > 0 ? 
           [...prev.slice(0, -1), newNote] : 
           [newNote];
+        
+        // Check if the new sequence (after replacing last note) is correct and complete
+        const isCompleteSequenceCorrect = compareNoteArrays(newNotes, manualNotes, newNotes.length);
+        if (isCompleteSequenceCorrect && newNotes.length === manualNotes.length) {
+          setIsMelodyCorrect(true);
+        }
+        
         return newNotes;
       }
     });
@@ -423,7 +430,7 @@ export default function EarTrainingPage() {
             <h2 className="text-lg font-semibold text-gray-900">Melody Status:</h2>
             <div className="flex gap-4">
               <div className="px-4 py-2 rounded-md bg-purple-100 text-purple-800">
-                Score: {score}
+                score = {score}
               </div>
               <div className={`px-4 py-2 rounded-md ${
                 isMelodyCorrect 
@@ -432,25 +439,21 @@ export default function EarTrainingPage() {
                     : 'bg-green-100 text-green-800'
                   : 'bg-gray-100 text-gray-800'
               }`}>
-                {isMelodyCorrect 
-                  ? isCorrectFirstTry 
-                    ? 'Perfect! Ready for Next Melody! 🎯✨' 
-                    : 'Completed Correctly! 🎉' 
-                  : 'In Progress...'}
+                isMelodyCorrect = {isMelodyCorrect.toString()}
               </div>
               <div className={`px-4 py-2 rounded-md ${
                 isCorrectFirstTry 
                   ? 'bg-blue-100 text-blue-800' 
                   : 'bg-gray-100 text-gray-800'
               }`}>
-                {isCorrectFirstTry ? 'Perfect First Try! 🌟' : 'Made Mistakes'}
+                isCorrectFirstTry = {isCorrectFirstTry.toString()}
               </div>
               <div className={`px-4 py-2 rounded-md ${
                 increaseScore
                   ? 'bg-yellow-100 text-yellow-800'
                   : 'bg-red-50 text-red-800'
               }`}>
-                {increaseScore ? 'Score Will Increase! 🏆' : 'No Score Increase'}
+                increaseScore = {increaseScore.toString()}
               </div>
             </div>
           </div>
