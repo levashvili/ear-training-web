@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Keyboard from '../components/Keyboard';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { units } from '../data/units';
 import { Unit, Melody, Note } from '../types/units';
 
@@ -21,6 +21,7 @@ export default function EarTrainingPage() {
   const [manualNotes, setManualNotes] = useState<Note[]>([]);
   const [comparisonResult, setComparisonResult] = useState<string>('');
   const [isMelodyCorrect, setIsMelodyCorrect] = useState<boolean>(false);
+  const [isCorrectFirstTry, setIsCorrectFirstTry] = useState<boolean>(true);
 
   // Helper function to compare note arrays
   const compareNoteArrays = (played: Note[], manual: Note[], upToLength: number): boolean => {
@@ -55,12 +56,23 @@ export default function EarTrainingPage() {
         // Check if the complete sequence is correct
         const isCompleteSequenceCorrect = compareNoteArrays(newNotes, manualNotes, newNotes.length);
         
-        // Update melody correct status based on complete match
-        setIsMelodyCorrect(isCompleteSequenceCorrect && newNotes.length === manualNotes.length);
+        // Check if the new note is correct at its position
+        const newNoteIndex = newNotes.length - 1;
+        if (newNoteIndex < manualNotes.length && newNote.note !== manualNotes[newNoteIndex].note) {
+          setIsCorrectFirstTry(false);
+        }
+        
+        // If melody is complete
+        if (isCompleteSequenceCorrect && newNotes.length === manualNotes.length) {
+          setIsMelodyCorrect(true);
+          return newNotes;
+        }
+        
         return newNotes;
       } else {
-        // If sequence is incorrect, mark as not complete and replace last note
+        // If sequence is incorrect, mark as not complete and no longer correct on first try
         setIsMelodyCorrect(false);
+        setIsCorrectFirstTry(false);
         const newNotes = prev.length > 0 ? 
           [...prev.slice(0, -1), newNote] : 
           [newNote];
@@ -73,6 +85,20 @@ export default function EarTrainingPage() {
       [note]: 'none'
     }));
   }, [manualNotes]);
+
+  // Add effect to handle melody completion
+  useEffect(() => {
+    if (isMelodyCorrect && !isCorrectFirstTry) {
+      // If completed but not on first try, reset after delay
+      const timer = setTimeout(() => {
+        setPlayedNotes([]);
+        setIsMelodyCorrect(false);
+        setIsCorrectFirstTry(true);  // Reset for new attempt
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isMelodyCorrect, isCorrectFirstTry]);
 
   // Modified to update state instead of saving to file
   const handleSaveNotes = () => {
@@ -200,124 +226,31 @@ export default function EarTrainingPage() {
       </header>
 
       <main className="flex-grow">
-        {/* Separate section for played notes */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="space-y-2">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-lg font-semibold text-gray-900">Your Played Notes:</h2>
-              {playedNotes.length > 0 && (
-                <button
-                  onClick={() => {
-                    setPlayedNotes([]);
-                    setIsMelodyCorrect(false);
-                  }}
-                  className="text-sm text-red-600 hover:text-red-800"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {playedNotes.map((note, index) => (
-                <div
-                  key={`played-${index}-${note.note}`}
-                  className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800"
-                >
-                  {note.note}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Manual notes section */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Manual Notes:</h2>
-            <div className="flex gap-2">
-              {manualNotes.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {manualNotes.map((note, index) => {
-                    const status = getNoteStatus(note, index, playedNotes);
-                    return (
-                      <div
-                        key={`manual-${index}-${note.note}`}
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[status]}`}
-                      >
-                        {note.note}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-gray-500 italic">No notes entered yet</p>
-              )}
-            </div>
-          </div>
-          <div className="flex justify-between items-center">
-            <button
-              onClick={() => setIsEditingNotes(!isEditingNotes)}
-              className="text-sm text-indigo-600 hover:text-indigo-800"
-            >
-              {isEditingNotes ? 'Cancel' : 'Edit Notes'}
-            </button>
-          </div>
-          
-          {isEditingNotes ? (
-            <div className="space-y-2">
-              <p className="text-xs text-gray-500">
-                Enter notes separated by commas (e.g., C4, D4, E4, F4)
-              </p>
-              <input
-                type="text"
-                value={noteInput}
-                onChange={(e) => setNoteInput(e.target.value)}
-                placeholder="C4, D4, E4, F4"
-                className="w-full px-3 py-2 border rounded-md"
-              />
-              <button
-                onClick={handleSaveNotes}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-              >
-                Save Notes
-              </button>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Comparison Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900">Note Comparison</h2>
-              <button
-                onClick={compareNotes}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Compare Notes
-              </button>
-            </div>
-            
-            {comparisonResult && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-md">
-                <pre className="whitespace-pre-wrap font-mono text-sm">
-                  {comparisonResult}
-                </pre>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Add display for melody completion status */}
+        {/* Status Section */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Melody Status:</h2>
-            <div className={`px-4 py-2 rounded-md ${
-              isMelodyCorrect 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-gray-100 text-gray-800'
-            }`}>
-              {isMelodyCorrect ? 'Completed Correctly! 🎉' : 'In Progress...'}
+            <div className="flex gap-4">
+              <div className={`px-4 py-2 rounded-md ${
+                isMelodyCorrect 
+                  ? isCorrectFirstTry
+                    ? 'bg-purple-100 text-purple-800' // Special color for perfect completion
+                    : 'bg-green-100 text-green-800'
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+                {isMelodyCorrect 
+                  ? isCorrectFirstTry 
+                    ? 'Perfect! Ready for Next Melody! 🎯✨' 
+                    : 'Completed Correctly! 🎉' 
+                  : 'In Progress...'}
+              </div>
+              <div className={`px-4 py-2 rounded-md ${
+                isCorrectFirstTry 
+                  ? 'bg-blue-100 text-blue-800' 
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+                {isCorrectFirstTry ? 'Perfect First Try! 🌟' : 'Made Mistakes'}
+              </div>
             </div>
           </div>
         </div>
@@ -355,8 +288,118 @@ export default function EarTrainingPage() {
           </div>
         </div>
 
-        {/* Integrated Sheet Music and Keyboard */}
-        <div className="bg-white rounded-lg shadow-md">
+        {/* Comparison Section */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-gray-900">Note Comparison</h2>
+              <button
+                onClick={compareNotes}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Compare Notes
+              </button>
+            </div>
+            
+            {comparisonResult && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                <pre className="whitespace-pre-wrap font-mono text-sm">
+                  {comparisonResult}
+                </pre>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Integrated Sheet Music and Keyboard Section */}
+        <div className="bg-white rounded-lg shadow-md mb-6">
+          {/* Manual notes section - Moved closer to keyboard */}
+          <div className="px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Manual Notes:</h2>
+              <div className="flex gap-2">
+                {manualNotes.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {manualNotes.map((note, index) => {
+                      const status = getNoteStatus(note, index, playedNotes);
+                      return (
+                        <div
+                          key={`manual-${index}-${note.note}`}
+                          className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[status]}`}
+                        >
+                          {note.note}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 italic">No notes entered yet</p>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <button
+                onClick={() => setIsEditingNotes(!isEditingNotes)}
+                className="text-sm text-indigo-600 hover:text-indigo-800"
+              >
+                {isEditingNotes ? 'Cancel' : 'Edit Notes'}
+              </button>
+            </div>
+            
+            {isEditingNotes ? (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500">
+                  Enter notes separated by commas (e.g., C4, D4, E4, F4)
+                </p>
+                <input
+                  type="text"
+                  value={noteInput}
+                  onChange={(e) => setNoteInput(e.target.value)}
+                  placeholder="C4, D4, E4, F4"
+                  className="w-full px-3 py-2 border rounded-md"
+                />
+                <button
+                  onClick={handleSaveNotes}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                >
+                  Save Notes
+                </button>
+              </div>
+            ) : null}
+          </div>
+
+          {/* Played notes section - Moved closer to keyboard */}
+          <div className="px-6 py-4 border-b border-gray-100">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-lg font-semibold text-gray-900">Your Played Notes:</h2>
+                {playedNotes.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setPlayedNotes([]);
+                      setIsMelodyCorrect(false);
+                      setIsCorrectFirstTry(true);
+                    }}
+                    className="text-sm text-red-600 hover:text-red-800"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {playedNotes.map((note, index) => (
+                  <div
+                    key={`played-${index}-${note.note}`}
+                    className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800"
+                  >
+                    {note.note}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Keyboard controls */}
           <div className="px-6 py-8 border-b border-gray-100">
             <div className="flex flex-col items-center gap-4">
               <div className="flex gap-2">
@@ -396,6 +439,8 @@ export default function EarTrainingPage() {
               </div>
             </div>
           </div>
+
+          {/* Keyboard */}
           <div className="pl-6 pr-4 py-4 bg-gray-50 overflow-hidden">
             <div className="flex justify-start">
               <Keyboard 
