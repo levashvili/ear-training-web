@@ -34,6 +34,7 @@ export default function EarTrainingPage() {
   const [audioEngine] = useState(() => new AudioEngine());
   const [isLoading, setIsLoading] = useState(true);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
 
   // Initialize audio engine
   useEffect(() => {
@@ -66,17 +67,39 @@ export default function EarTrainingPage() {
     }
   }, [searchParams]);
 
-  // Handle begin practice
+  // Add helper function to play melody
+  const playMelody = useCallback((melody: Melody) => {
+    // Stop any currently playing audio
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+
+    // Create and play new audio
+    const audio = new Audio(melody.audioFile);
+    setCurrentAudio(audio);
+    audio.play().catch(error => {
+      console.error('Error playing audio:', error);
+    });
+  }, [currentAudio]);
+
+  // Add cleanup effect
+  useEffect(() => {
+    return () => {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+      }
+    };
+  }, [currentAudio]);
+
+  // Modify handleBeginPractice to use playMelody
   const handleBeginPractice = useCallback(() => {
     if (!currentMelody || isLoading) return;
     
     setIsPracticeStarted(true);
-    const audio = new Audio(currentMelody.audioFile);
-    audio.play().catch(error => {
-      console.error('Error playing audio:', error);
-      setIsPracticeStarted(false);
-    });
-  }, [currentMelody, isLoading]);
+    playMelody(currentMelody);
+  }, [currentMelody, isLoading, playMelody]);
 
   const [keyStatuses, setKeyStatuses] = useState<Record<string, 'correct' | 'incorrect' | 'none'>>({});
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
@@ -324,7 +347,7 @@ export default function EarTrainingPage() {
     return 0;
   };
 
-  // Add handleRetry function
+  // Modify handleRetry to use playMelody
   const handleRetry = useCallback(() => {
     // Reset all game states
     setScore(0);
@@ -339,14 +362,11 @@ export default function EarTrainingPage() {
     if (currentUnit && currentUnit.melodies.length > 0) {
       setCurrentMelody(currentUnit.melodies[0]);
       // Play the first melody
-      const audio = new Audio(currentUnit.melodies[0].audioFile);
-      audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-      });
+      playMelody(currentUnit.melodies[0]);
     }
-  }, [currentUnit]);
+  }, [currentUnit, playMelody]);
 
-  // Modify the automatic progression effect to handle unit completion
+  // Modify automatic progression effect to use playMelody
   useEffect(() => {
     if (isMelodyCorrect && isCorrectFirstTry && currentMelody && currentUnit) {
       // Add a 2-second delay before moving to next melody
@@ -389,19 +409,16 @@ export default function EarTrainingPage() {
           setCurrentMelody(nextMelody);
           
           // Play the new melody automatically
-          const audio = new Audio(nextMelody.audioFile);
-          audio.play().catch(error => {
-            console.error('Error playing audio:', error);
-          });
+          playMelody(nextMelody);
         }
       }, 2000); // 2-second delay
 
       // Cleanup timeout if component unmounts or conditions change
       return () => clearTimeout(timer);
     }
-  }, [isMelodyCorrect, isCorrectFirstTry, currentMelody, currentUnit, increaseScore]);
+  }, [isMelodyCorrect, isCorrectFirstTry, currentMelody, currentUnit, increaseScore, playMelody]);
 
-  // Add handleRepeat function
+  // Modify handleRepeat to use playMelody
   const handleRepeat = useCallback(() => {
     // Reset playedNotes and isCorrectFirstTry
     setPlayedNotes([]);
@@ -409,14 +426,11 @@ export default function EarTrainingPage() {
     
     // Play the current melody
     if (currentMelody) {
-      const audio = new Audio(currentMelody.audioFile);
-      audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-      });
+      playMelody(currentMelody);
     }
-  }, [currentMelody]);
+  }, [currentMelody, playMelody]);
 
-  // Modify handleSkip to handle unit completion
+  // Modify handleSkip to use playMelody
   const handleSkip = useCallback(() => {
     if (!currentMelody || !currentUnit) return;
 
@@ -445,11 +459,8 @@ export default function EarTrainingPage() {
     setCurrentMelody(nextMelody);
     
     // Play the new melody automatically
-    const audio = new Audio(nextMelody.audioFile);
-    audio.play().catch(error => {
-      console.error('Error playing audio:', error);
-    });
-  }, [currentMelody, currentUnit]);
+    playMelody(nextMelody);
+  }, [currentMelody, currentUnit, playMelody]);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">

@@ -9,7 +9,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 const config = {
   silenceThreshold: '-25dB',    // Threshold for silence detection
   silenceDuration: '1.5',       // Increased to 1.5 seconds to avoid splitting within melodies
-  minMelodyDuration: 1,         // Minimum melody duration
+  minMelodyDuration: 0.5,         // Minimum melody duration
   outputFormat: 'mp3',
   trimSilenceThreshold: '-35dB',
   trimSilenceDuration: '0.1',   // Keep short duration for trimming within melodies
